@@ -16,7 +16,7 @@ func TestCORS(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := mux.NewContext(req, rec)
-	h := New(DefaultConfig)(route.NotFoundHandler)
+	h := New(DefaultOptions)(route.NotFoundHandler)
 	h(c)
 	assert.Equal(t, "*", rec.Header().Get(route.HeaderAccessControlAllowOrigin))
 
@@ -24,7 +24,7 @@ func TestCORS(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	c = mux.NewContext(req, rec)
-	h = New(Config{
+	h = New(Options{
 		AllowOrigins: []string{"localhost"},
 	})(route.NotFoundHandler)
 	req.Header.Set(route.HeaderOrigin, "localhost")
@@ -37,7 +37,7 @@ func TestCORS(t *testing.T) {
 	c = mux.NewContext(req, rec)
 	req.Header.Set(route.HeaderOrigin, "localhost")
 	req.Header.Set(route.HeaderContentType, route.MIMEApplicationJSON)
-	cors := New(Config{
+	cors := New(Options{
 		AllowOrigins:     []string{"localhost"},
 		AllowCredentials: true,
 		MaxAge:           3600,
@@ -55,7 +55,7 @@ func TestCORS(t *testing.T) {
 	c = mux.NewContext(req, rec)
 	req.Header.Set(route.HeaderOrigin, "localhost")
 	req.Header.Set(route.HeaderContentType, route.MIMEApplicationJSON)
-	cors = New(Config{
+	cors = New(Options{
 		AllowOrigins:     []string{"*"},
 		AllowCredentials: true,
 		MaxAge:           3600,

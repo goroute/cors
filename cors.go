@@ -9,8 +9,8 @@ import (
 )
 
 type (
-	// Config defines the config for CORS middleware.
-	Config struct {
+	// Options defines the config for CORS middleware.
+	Options struct {
 		// Skipper defines a function to skip middleware.
 		Skipper route.Skipper
 
@@ -48,8 +48,8 @@ type (
 )
 
 var (
-	// DefaultConfig is the default CORS middleware config.
-	DefaultConfig = Config{
+	// DefaultOptions is the default CORS middleware config.
+	DefaultOptions = Options{
 		Skipper:      route.DefaultSkipper,
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
@@ -57,26 +57,26 @@ var (
 )
 
 // New returns a CORS middleware.
-func New(config Config) route.MiddlewareFunc {
+func New(opts Options) route.MiddlewareFunc {
 	// Defaults
-	if config.Skipper == nil {
-		config.Skipper = DefaultConfig.Skipper
+	if opts.Skipper == nil {
+		opts.Skipper = DefaultOptions.Skipper
 	}
-	if len(config.AllowOrigins) == 0 {
-		config.AllowOrigins = DefaultConfig.AllowOrigins
+	if len(opts.AllowOrigins) == 0 {
+		opts.AllowOrigins = DefaultOptions.AllowOrigins
 	}
-	if len(config.AllowMethods) == 0 {
-		config.AllowMethods = DefaultConfig.AllowMethods
+	if len(opts.AllowMethods) == 0 {
+		opts.AllowMethods = DefaultOptions.AllowMethods
 	}
 
-	allowMethods := strings.Join(config.AllowMethods, ",")
-	allowHeaders := strings.Join(config.AllowHeaders, ",")
-	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
-	maxAge := strconv.Itoa(config.MaxAge)
+	allowMethods := strings.Join(opts.AllowMethods, ",")
+	allowHeaders := strings.Join(opts.AllowHeaders, ",")
+	exposeHeaders := strings.Join(opts.ExposeHeaders, ",")
+	maxAge := strconv.Itoa(opts.MaxAge)
 
 	return func(next route.HandlerFunc) route.HandlerFunc {
 		return func(c route.Context) error {
-			if config.Skipper(c) {
+			if opts.Skipper(c) {
 				return next(c)
 			}
 
@@ -86,8 +86,8 @@ func New(config Config) route.MiddlewareFunc {
 			allowOrigin := ""
 
 			// Check allowed origins
-			for _, o := range config.AllowOrigins {
-				if o == "*" && config.AllowCredentials {
+			for _, o := range opts.AllowOrigins {
+				if o == "*" && opts.AllowCredentials {
 					allowOrigin = origin
 					break
 				}
@@ -101,7 +101,7 @@ func New(config Config) route.MiddlewareFunc {
 			if req.Method != http.MethodOptions {
 				res.Header().Add(route.HeaderVary, route.HeaderOrigin)
 				res.Header().Set(route.HeaderAccessControlAllowOrigin, allowOrigin)
-				if config.AllowCredentials {
+				if opts.AllowCredentials {
 					res.Header().Set(route.HeaderAccessControlAllowCredentials, "true")
 				}
 				if exposeHeaders != "" {
@@ -116,7 +116,7 @@ func New(config Config) route.MiddlewareFunc {
 			res.Header().Add(route.HeaderVary, route.HeaderAccessControlRequestHeaders)
 			res.Header().Set(route.HeaderAccessControlAllowOrigin, allowOrigin)
 			res.Header().Set(route.HeaderAccessControlAllowMethods, allowMethods)
-			if config.AllowCredentials {
+			if opts.AllowCredentials {
 				res.Header().Set(route.HeaderAccessControlAllowCredentials, "true")
 			}
 			if allowHeaders != "" {
@@ -127,7 +127,7 @@ func New(config Config) route.MiddlewareFunc {
 					res.Header().Set(route.HeaderAccessControlAllowHeaders, h)
 				}
 			}
-			if config.MaxAge > 0 {
+			if opts.MaxAge > 0 {
 				res.Header().Set(route.HeaderAccessControlMaxAge, maxAge)
 			}
 			return c.NoContent(http.StatusNoContent)
