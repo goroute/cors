@@ -8,65 +8,101 @@ import (
 	"github.com/goroute/route"
 )
 
-type (
-	// Options defines the config for CORS middleware.
-	Options struct {
-		// Skipper defines a function to skip middleware.
-		Skipper route.Skipper
+// Options defines the config for CORS middleware.
+type Options struct {
+	// Skipper defines a function to skip middleware.
+	Skipper route.Skipper
 
-		// AllowOrigin defines a list of origins that may access the resource.
-		// Optional. Default value []string{"*"}.
-		AllowOrigins []string `yaml:"allow_origins"`
+	// AllowOrigin defines a list of origins that may access the resource.
+	// Optional. Default value []string{"*"}.
+	AllowOrigins []string `yaml:"allow_origins"`
 
-		// AllowMethods defines a list methods allowed when accessing the resource.
-		// This is used in response to a preflight request.
-		// Optional. Default value DefaultCORSConfig.AllowMethods.
-		AllowMethods []string `yaml:"allow_methods"`
+	// AllowMethods defines a list methods allowed when accessing the resource.
+	// This is used in response to a preflight request.
+	// Optional. Default value DefaultCORSConfig.AllowMethods.
+	AllowMethods []string `yaml:"allow_methods"`
 
-		// AllowHeaders defines a list of request headers that can be used when
-		// making the actual request. This in response to a preflight request.
-		// Optional. Default value []string{}.
-		AllowHeaders []string `yaml:"allow_headers"`
+	// AllowHeaders defines a list of request headers that can be used when
+	// making the actual request. This in response to a preflight request.
+	// Optional. Default value []string{}.
+	AllowHeaders []string `yaml:"allow_headers"`
 
-		// AllowCredentials indicates whether or not the response to the request
-		// can be exposed when the credentials flag is true. When used as part of
-		// a response to a preflight request, this indicates whether or not the
-		// actual request can be made using credentials.
-		// Optional. Default value false.
-		AllowCredentials bool `yaml:"allow_credentials"`
+	// AllowCredentials indicates whether or not the response to the request
+	// can be exposed when the credentials flag is true. When used as part of
+	// a response to a preflight request, this indicates whether or not the
+	// actual request can be made using credentials.
+	// Optional. Default value false.
+	AllowCredentials bool `yaml:"allow_credentials"`
 
-		// ExposeHeaders defines a whitelist headers that clients are allowed to
-		// access.
-		// Optional. Default value []string{}.
-		ExposeHeaders []string `yaml:"expose_headers"`
+	// ExposeHeaders defines a whitelist headers that clients are allowed to
+	// access.
+	// Optional. Default value []string{}.
+	ExposeHeaders []string `yaml:"expose_headers"`
 
-		// MaxAge indicates how long (in seconds) the results of a preflight request
-		// can be cached.
-		// Optional. Default value 0.
-		MaxAge int `yaml:"max_age"`
-	}
-)
+	// MaxAge indicates how long (in seconds) the results of a preflight request
+	// can be cached.
+	// Optional. Default value 0.
+	MaxAge int `yaml:"max_age"`
+}
 
-var (
-	// DefaultOptions is the default CORS middleware config.
-	DefaultOptions = Options{
+type Option func(*Options)
+
+func GetDefaultOptions() Options {
+	return Options{
 		Skipper:      route.DefaultSkipper,
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
 	}
-)
+}
+
+func Skipper(skipper route.Skipper) Option {
+	return func(o *Options) {
+		o.Skipper = skipper
+	}
+}
+
+func AllowOrigins(allowOrigins []string) Option {
+	return func(o *Options) {
+		o.AllowOrigins = allowOrigins
+	}
+}
+
+func AllowMethods(allowMethods []string) Option {
+	return func(o *Options) {
+		o.AllowMethods = allowMethods
+	}
+}
+
+func AllowHeaders(allowHeaders []string) Option {
+	return func(o *Options) {
+		o.AllowHeaders = allowHeaders
+	}
+}
+
+func AllowCredentials(allowCredentials bool) Option {
+	return func(o *Options) {
+		o.AllowCredentials = allowCredentials
+	}
+}
+
+func ExposeHeaders(exposeHeaders []string) Option {
+	return func(o *Options) {
+		o.ExposeHeaders = exposeHeaders
+	}
+}
+
+func MaxAge(maxAge int) Option {
+	return func(o *Options) {
+		o.MaxAge = maxAge
+	}
+}
 
 // New returns a CORS middleware.
-func New(opts Options) route.MiddlewareFunc {
-	// Defaults
-	if opts.Skipper == nil {
-		opts.Skipper = DefaultOptions.Skipper
-	}
-	if len(opts.AllowOrigins) == 0 {
-		opts.AllowOrigins = DefaultOptions.AllowOrigins
-	}
-	if len(opts.AllowMethods) == 0 {
-		opts.AllowMethods = DefaultOptions.AllowMethods
+func New(options ...Option) route.MiddlewareFunc {
+	// Apply options.
+	opts := GetDefaultOptions()
+	for _, opt := range options {
+		opt(&opts)
 	}
 
 	allowMethods := strings.Join(opts.AllowMethods, ",")
