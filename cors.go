@@ -110,63 +110,61 @@ func New(options ...Option) route.MiddlewareFunc {
 	exposeHeaders := strings.Join(opts.ExposeHeaders, ",")
 	maxAge := strconv.Itoa(opts.MaxAge)
 
-	return func(next route.HandlerFunc) route.HandlerFunc {
-		return func(c route.Context) error {
-			if opts.Skipper(c) {
-				return next(c)
+	return func(c route.Context, next route.HandlerFunc) error {
+		if opts.Skipper(c) {
+			return next(c)
+		}
+
+		req := c.Request()
+		res := c.Response()
+		origin := req.Header.Get(route.HeaderOrigin)
+		allowOrigin := ""
+
+		// Check allowed origins
+		for _, o := range opts.AllowOrigins {
+			if o == "*" && opts.AllowCredentials {
+				allowOrigin = origin
+				break
 			}
-
-			req := c.Request()
-			res := c.Response()
-			origin := req.Header.Get(route.HeaderOrigin)
-			allowOrigin := ""
-
-			// Check allowed origins
-			for _, o := range opts.AllowOrigins {
-				if o == "*" && opts.AllowCredentials {
-					allowOrigin = origin
-					break
-				}
-				if o == "*" || o == origin {
-					allowOrigin = o
-					break
-				}
+			if o == "*" || o == origin {
+				allowOrigin = o
+				break
 			}
+		}
 
-			// Simple request
-			if req.Method != http.MethodOptions {
-				res.Header().Add(route.HeaderVary, route.HeaderOrigin)
-				res.Header().Set(route.HeaderAccessControlAllowOrigin, allowOrigin)
-				if opts.AllowCredentials {
-					res.Header().Set(route.HeaderAccessControlAllowCredentials, "true")
-				}
-				if exposeHeaders != "" {
-					res.Header().Set(route.HeaderAccessControlExposeHeaders, exposeHeaders)
-				}
-				return next(c)
-			}
-
-			// Preflight requestR
+		// Simple request
+		if req.Method != http.MethodOptions {
 			res.Header().Add(route.HeaderVary, route.HeaderOrigin)
-			res.Header().Add(route.HeaderVary, route.HeaderAccessControlRequestMethod)
-			res.Header().Add(route.HeaderVary, route.HeaderAccessControlRequestHeaders)
 			res.Header().Set(route.HeaderAccessControlAllowOrigin, allowOrigin)
-			res.Header().Set(route.HeaderAccessControlAllowMethods, allowMethods)
 			if opts.AllowCredentials {
 				res.Header().Set(route.HeaderAccessControlAllowCredentials, "true")
 			}
-			if allowHeaders != "" {
-				res.Header().Set(route.HeaderAccessControlAllowHeaders, allowHeaders)
-			} else {
-				h := req.Header.Get(route.HeaderAccessControlRequestHeaders)
-				if h != "" {
-					res.Header().Set(route.HeaderAccessControlAllowHeaders, h)
-				}
+			if exposeHeaders != "" {
+				res.Header().Set(route.HeaderAccessControlExposeHeaders, exposeHeaders)
 			}
-			if opts.MaxAge > 0 {
-				res.Header().Set(route.HeaderAccessControlMaxAge, maxAge)
-			}
-			return c.NoContent(http.StatusNoContent)
+			return next(c)
 		}
+
+		// Preflight requestR
+		res.Header().Add(route.HeaderVary, route.HeaderOrigin)
+		res.Header().Add(route.HeaderVary, route.HeaderAccessControlRequestMethod)
+		res.Header().Add(route.HeaderVary, route.HeaderAccessControlRequestHeaders)
+		res.Header().Set(route.HeaderAccessControlAllowOrigin, allowOrigin)
+		res.Header().Set(route.HeaderAccessControlAllowMethods, allowMethods)
+		if opts.AllowCredentials {
+			res.Header().Set(route.HeaderAccessControlAllowCredentials, "true")
+		}
+		if allowHeaders != "" {
+			res.Header().Set(route.HeaderAccessControlAllowHeaders, allowHeaders)
+		} else {
+			h := req.Header.Get(route.HeaderAccessControlRequestHeaders)
+			if h != "" {
+				res.Header().Set(route.HeaderAccessControlAllowHeaders, h)
+			}
+		}
+		if opts.MaxAge > 0 {
+			res.Header().Set(route.HeaderAccessControlMaxAge, maxAge)
+		}
+		return c.NoContent(http.StatusNoContent)
 	}
 }

@@ -16,17 +16,17 @@ func TestCORS(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := mux.NewContext(req, rec)
-	h := New()(route.NotFoundHandler)
-	h(c)
+	mw := New()
+	mw(c, route.NotFoundHandler)
 	assert.Equal(t, "*", rec.Header().Get(route.HeaderAccessControlAllowOrigin))
 
 	// Allow origins
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	rec = httptest.NewRecorder()
 	c = mux.NewContext(req, rec)
-	h = New(AllowOrigins([]string{"localhost"}))(route.NotFoundHandler)
+	mw = New(AllowOrigins([]string{"localhost"}))
 	req.Header.Set(route.HeaderOrigin, "localhost")
-	h(c)
+	mw(c, route.NotFoundHandler)
 	assert.Equal(t, "localhost", rec.Header().Get(route.HeaderAccessControlAllowOrigin))
 
 	// Preflight request
@@ -36,13 +36,13 @@ func TestCORS(t *testing.T) {
 	req.Header.Set(route.HeaderOrigin, "localhost")
 	req.Header.Set(route.HeaderContentType, route.MIMEApplicationJSON)
 
-	cors := New(
+	mw = New(
 		AllowOrigins([]string{"localhost"}),
 		AllowCredentials(true),
 		MaxAge(3600),
 	)
-	h = cors(route.NotFoundHandler)
-	h(c)
+	mw(c, route.NotFoundHandler)
+
 	assert.Equal(t, "localhost", rec.Header().Get(route.HeaderAccessControlAllowOrigin))
 	assert.NotEmpty(t, rec.Header().Get(route.HeaderAccessControlAllowMethods))
 	assert.Equal(t, "true", rec.Header().Get(route.HeaderAccessControlAllowCredentials))
@@ -54,13 +54,13 @@ func TestCORS(t *testing.T) {
 	c = mux.NewContext(req, rec)
 	req.Header.Set(route.HeaderOrigin, "localhost")
 	req.Header.Set(route.HeaderContentType, route.MIMEApplicationJSON)
-	cors = New(
+	mw = New(
 		AllowOrigins([]string{"*"}),
 		AllowCredentials(true),
 		MaxAge(3600),
 	)
-	h = cors(route.NotFoundHandler)
-	h(c)
+	mw(c, route.NotFoundHandler)
+
 	assert.Equal(t, "localhost", rec.Header().Get(route.HeaderAccessControlAllowOrigin))
 	assert.NotEmpty(t, rec.Header().Get(route.HeaderAccessControlAllowMethods))
 	assert.Equal(t, "true", rec.Header().Get(route.HeaderAccessControlAllowCredentials))
